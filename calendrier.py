@@ -1,8 +1,8 @@
 import datetime
 import os.path
-import pytz
 from datetime import timedelta, timezone
 from datetime import date 
+from dateutil import tz
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -39,17 +39,15 @@ def main():
 
   try:
     service = build("calendar", "v3", credentials=creds)
-
+    from_zone = tz.tzutc()
+    to_zone = tz.tzlocal()
     # Call the Calendar API
-    now = datetime.datetime.utcnow().isoformat() + "Z"  # 'Z' indicates UTC time
     print("Getting the upcoming 10 events")
-    test = date.today()
-    start= test - timedelta(days=test.weekday())
+    today = date.today()
+    start= today - timedelta(days=today.weekday())
     end = start + timedelta(days=6)
     startstr = str(start) + 'T00:00:00.000000Z'
     endstr = str(end) + 'T00:00:00.000000Z'
-    print(str(end))
-    print(str(now))
     events_result = (
         service.events()
         .list(
@@ -66,11 +64,17 @@ def main():
     if not events:
       print("No upcoming events found.")
       return
-
+    prevDay = ""
     # Prints the start and name of the next 10 events
     for event in events:
       start = event["start"].get("dateTime", event["start"].get("date"))
-      print(start, event["summary"])
+      utc = datetime.datetime.strptime(start.replace('T', ' ')[:-6], '%Y-%m-%d %H:%M:%S')
+      day = utc.strftime('%A')
+      if (prevDay != day):
+        print(utc.strftime('%A'))     
+      print(str(utc), event["summary"])
+      prevDay = day
+      
 
   except HttpError as error:
     print(f"An error occurred: {error}")
